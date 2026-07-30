@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Reference-only mockups (vanilla React via <script> tags, not part of the app):
+    "references/**",
   ]),
 ]);
 
