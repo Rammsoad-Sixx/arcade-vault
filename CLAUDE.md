@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 @AGENTS.md
 
+## Skills
+
+Usa siempre /front-design para diseñar la interfaz de usuario.
+
 ## Project
 
 Arcade Vault — a platform to play games online and compete for points ("Es una plataforma para jugar online y competir por la mayor cantidad de puntos"). Currently a fresh `create-next-app` scaffold; no game/scoring features are implemented yet.
