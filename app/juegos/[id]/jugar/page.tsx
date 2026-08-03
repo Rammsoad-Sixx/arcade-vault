@@ -5,13 +5,7 @@ import { useRouter } from "next/navigation";
 import { GAMES } from "@/lib/games-data";
 import { useUser } from "@/lib/user-context";
 import AsteroidsGame, { type AsteroidsGameHandle } from "@/components/games/AsteroidsGame";
-
-interface SavedScore {
-  game: string;
-  score: number;
-  name: string;
-  at: number;
-}
+import { saveScore } from "./actions";
 
 export default function GamePlayer({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -26,6 +20,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [over, setOver] = useState(false);
   const [nameOverride, setNameOverride] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [pending, setPending] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
 
   const isAsteroids = id === "asteroides";
@@ -76,21 +72,24 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
     setPaused(false);
     setOver(false);
     setSaved(false);
+    setPending(false);
+    setSaveError(null);
     setNameOverride(null);
     if (isAsteroids) {
       asteroidsRef.current?.reset();
     }
   };
 
-  const saveScore = () => {
-    try {
-      const all: SavedScore[] = JSON.parse(localStorage.getItem("av_scores") || "[]");
-      all.push({ game: game.id, score, name, at: Date.now() });
-      localStorage.setItem("av_scores", JSON.stringify(all));
-    } catch {
-      // localStorage inaccesible: se omite el guardado
+  const handleSaveScore = async () => {
+    setPending(true);
+    setSaveError(null);
+    const result = await saveScore(game.id, name, score);
+    setPending(false);
+    if (result.ok) {
+      setSaved(true);
+    } else {
+      setSaveError(result.error);
     }
-    setSaved(true);
   };
 
   return (
@@ -186,9 +185,10 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
                   onChange={(e) => setNameOverride(e.target.value.toUpperCase().slice(0, 10))}
                   placeholder="TUS INICIALES"
                 />
-                <button className="btn yellow" onClick={saveScore}>
-                  GUARDAR PUNTUACIÓN
+                <button className="btn yellow" onClick={handleSaveScore} disabled={pending}>
+                  {pending ? "GUARDANDO..." : "GUARDAR PUNTUACIÓN"}
                 </button>
+                {saveError && <div className="toast-error">▸ ERROR: {saveError}</div>}
               </div>
             ) : (
               <div className="toast-saved">▸ PUNTUACIÓN GUARDADA_</div>
