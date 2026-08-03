@@ -102,6 +102,17 @@ export const GAMES: Game[] = [
     best: 24,
     plays: "4.2K",
   },
+  {
+    id: "asteroides",
+    title: "ASTEROIDES",
+    short: "Nave, rocas y disparos: el clásico arcade, jugable de verdad.",
+    long: "Pilotea una nave triangular a través de un campo de asteroides que envuelve los bordes de la pantalla. Dispara para fragmentar rocas grandes en medianas y pequeñas, esquiva colisiones y sobrevive oleada tras oleada. Recoge el power-up de triple disparo cuando aparezca.",
+    cat: "SHOOTER",
+    cover: "cover-asteroides",
+    color: "cyan",
+    best: 62450,
+    plays: "2.1K",
+  },
 ];
 
 export const CATS: ("TODOS" | GameCategory)[] = [

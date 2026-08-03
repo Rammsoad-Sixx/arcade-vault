@@ -1,9 +1,10 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GAMES } from "@/lib/games-data";
 import { useUser } from "@/lib/user-context";
+import AsteroidsGame, { type AsteroidsGameHandle } from "@/components/games/AsteroidsGame";
 
 interface SavedScore {
   game: string;
@@ -25,11 +26,13 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [over, setOver] = useState(false);
   const [nameOverride, setNameOverride] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const asteroidsRef = useRef<AsteroidsGameHandle>(null);
 
+  const isAsteroids = id === "asteroides";
   const name = nameOverride ?? (user ? user.name : "INVITADO");
 
   useEffect(() => {
-    if (over || paused) return;
+    if (over || paused || isAsteroids) return;
     const t = setInterval(() => {
       setScore((s) => {
         const next = s + Math.floor(10 + Math.random() * 90);
@@ -38,11 +41,34 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       });
     }, 220);
     return () => clearInterval(t);
-  }, [over, paused]);
+  }, [over, paused, isAsteroids]);
 
   if (!game) return null;
 
-  const endGame = () => setOver(true);
+  const handleGameOver = (finalScore: number) => {
+    setScore(finalScore);
+    setOver(true);
+  };
+
+  const endGame = () => {
+    if (isAsteroids) {
+      asteroidsRef.current?.forceGameOver();
+    } else {
+      setOver(true);
+    }
+  };
+
+  const togglePause = () => {
+    setPaused((p) => {
+      const next = !p;
+      if (isAsteroids) {
+        if (next) asteroidsRef.current?.pause();
+        else asteroidsRef.current?.resume();
+      }
+      return next;
+    });
+  };
+
   const restart = () => {
     setScore(0);
     setLives(3);
@@ -51,6 +77,9 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
     setOver(false);
     setSaved(false);
     setNameOverride(null);
+    if (isAsteroids) {
+      asteroidsRef.current?.reset();
+    }
   };
 
   const saveScore = () => {
@@ -88,7 +117,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
           </div>
         </div>
         <div className="hud-actions">
-          <button className="btn yellow" onClick={() => setPaused((p) => !p)}>
+          <button className="btn yellow" onClick={togglePause}>
             {paused ? "REANUDAR" : "PAUSA"}
           </button>
           <button className="btn magenta" onClick={endGame}>
@@ -102,13 +131,23 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
 
       <div className="crt">
         <div className="crt-screen">
-          <div className="game-arena">
-            <div className="grid-floor"></div>
-            <div className="enemy e1"></div>
-            <div className="enemy e2"></div>
-            <div className="enemy e3"></div>
-            <div className="player-ship"></div>
-          </div>
+          {isAsteroids ? (
+            <AsteroidsGame
+              ref={asteroidsRef}
+              onScoreChange={setScore}
+              onLivesChange={setLives}
+              onLevelChange={setLevel}
+              onGameOver={handleGameOver}
+            />
+          ) : (
+            <div className="game-arena">
+              <div className="grid-floor"></div>
+              <div className="enemy e1"></div>
+              <div className="enemy e2"></div>
+              <div className="enemy e3"></div>
+              <div className="player-ship"></div>
+            </div>
+          )}
           {paused && (
             <div className="crt-content" style={{ background: "rgba(0,0,0,0.6)", zIndex: 5 }}>
               <div>
