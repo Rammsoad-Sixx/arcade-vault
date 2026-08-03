@@ -797,6 +797,13 @@ a { color: inherit; text-decoration: none; }
   animation: typewriter 1.6s steps(22) forwards, caret 0.8s steps(1) infinite;
   width: 0;
 }
+.toast-error {
+  font-family: var(--pixel);
+  font-size: 11px;
+  color: var(--magenta);
+  text-shadow: 0 0 8px var(--magenta);
+  margin-top: 14px;
+}
 @keyframes typewriter { to { width: 22ch; } }
 @keyframes caret { 50% { border-color: transparent; } }
 
