@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { GAMES } from "@/lib/games-data";
 import { useUser } from "@/lib/user-context";
 import AsteroidsGame, { type AsteroidsGameHandle } from "@/components/games/AsteroidsGame";
+import TetrisGame, { type TetrisGameHandle } from "@/components/games/TetrisGame";
 import { saveScore } from "./actions";
 
 export default function GamePlayer({ params }: { params: Promise<{ id: string }> }) {
@@ -16,6 +17,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
+  const [lines, setLines] = useState(0);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [nameOverride, setNameOverride] = useState<string | null>(null);
@@ -23,12 +25,14 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [pending, setPending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
+  const tetrisRef = useRef<TetrisGameHandle>(null);
 
   const isAsteroids = id === "asteroides";
+  const isTetris = id === "caida";
   const name = nameOverride ?? (user ? user.name : "INVITADO");
 
   useEffect(() => {
-    if (over || paused || isAsteroids) return;
+    if (over || paused || isAsteroids || isTetris) return;
     const t = setInterval(() => {
       setScore((s) => {
         const next = s + Math.floor(10 + Math.random() * 90);
@@ -37,7 +41,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       });
     }, 220);
     return () => clearInterval(t);
-  }, [over, paused, isAsteroids]);
+  }, [over, paused, isAsteroids, isTetris]);
 
   if (!game) return null;
 
@@ -49,6 +53,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const endGame = () => {
     if (isAsteroids) {
       asteroidsRef.current?.forceGameOver();
+    } else if (isTetris) {
+      tetrisRef.current?.forceGameOver();
     } else {
       setOver(true);
     }
@@ -60,6 +66,9 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       if (isAsteroids) {
         if (next) asteroidsRef.current?.pause();
         else asteroidsRef.current?.resume();
+      } else if (isTetris) {
+        if (next) tetrisRef.current?.pause();
+        else tetrisRef.current?.resume();
       }
       return next;
     });
@@ -69,6 +78,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
     setScore(0);
     setLives(3);
     setLevel(1);
+    setLines(0);
     setPaused(false);
     setOver(false);
     setSaved(false);
@@ -77,6 +87,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
     setNameOverride(null);
     if (isAsteroids) {
       asteroidsRef.current?.reset();
+    } else if (isTetris) {
+      tetrisRef.current?.reset();
     }
   };
 
@@ -114,6 +126,12 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
             <div className="l">Nivel</div>
             <div className="v">{String(level).padStart(2, "0")}</div>
           </div>
+          {isTetris && (
+            <div className="hud-stat">
+              <div className="l">Líneas</div>
+              <div className="v">{lines}</div>
+            </div>
+          )}
         </div>
         <div className="hud-actions">
           <button className="btn yellow" onClick={togglePause}>
@@ -136,6 +154,15 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
               onScoreChange={setScore}
               onLivesChange={setLives}
               onLevelChange={setLevel}
+              onGameOver={handleGameOver}
+            />
+          ) : isTetris ? (
+            <TetrisGame
+              ref={tetrisRef}
+              onScoreChange={setScore}
+              onLivesChange={setLives}
+              onLevelChange={setLevel}
+              onLinesChange={setLines}
               onGameOver={handleGameOver}
             />
           ) : (
