@@ -498,6 +498,29 @@ a { color: inherit; text-decoration: none; }
   filter: drop-shadow(0 0 8px rgba(0,255,136,0.5));
 }
 
+.cover-asteroides { background: radial-gradient(circle at 30% 70%, #001a2a, #000005); }
+.cover-asteroides::after {
+  content: "";
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(circle at 15% 20%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 35% 10%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 60% 15%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 85% 25%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 10% 60%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 92% 70%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 70% 85%, #fff 0 1px, transparent 2px),
+    radial-gradient(circle at 40% 88%, #999 0 20px, transparent 21px),
+    radial-gradient(circle at 78% 45%, #666 0 16px, transparent 17px);
+  filter: drop-shadow(0 0 6px rgba(0,245,255,0.35));
+}
+.cover-asteroides::before {
+  content: "◆";
+  position: absolute; left: 60%; top: 55%;
+  color: var(--cyan); font-size: 20px;
+  text-shadow: 0 0 10px var(--cyan);
+}
+
 .cover-duelo { background: #0a0a18; }
 .cover-duelo::after {
   content: "";
