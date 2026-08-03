@@ -6,6 +6,7 @@ import { GAMES } from "@/lib/games-data";
 import { useUser } from "@/lib/user-context";
 import AsteroidsGame, { type AsteroidsGameHandle } from "@/components/games/AsteroidsGame";
 import TetrisGame, { type TetrisGameHandle } from "@/components/games/TetrisGame";
+import BloqueBusterGame, { type BloqueBusterGameHandle } from "@/components/games/BloqueBusterGame";
 import { saveScore } from "./actions";
 
 export default function GamePlayer({ params }: { params: Promise<{ id: string }> }) {
@@ -26,13 +27,15 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [saveError, setSaveError] = useState<string | null>(null);
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
   const tetrisRef = useRef<TetrisGameHandle>(null);
+  const bloqueBusterRef = useRef<BloqueBusterGameHandle>(null);
 
   const isAsteroids = id === "asteroides";
   const isTetris = id === "caida";
+  const isBloqueBuster = id === "bloque-buster";
   const name = nameOverride ?? (user ? user.name : "INVITADO");
 
   useEffect(() => {
-    if (over || paused || isAsteroids || isTetris) return;
+    if (over || paused || isAsteroids || isTetris || isBloqueBuster) return;
     const t = setInterval(() => {
       setScore((s) => {
         const next = s + Math.floor(10 + Math.random() * 90);
@@ -41,7 +44,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       });
     }, 220);
     return () => clearInterval(t);
-  }, [over, paused, isAsteroids, isTetris]);
+  }, [over, paused, isAsteroids, isTetris, isBloqueBuster]);
 
   if (!game) return null;
 
@@ -55,6 +58,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       asteroidsRef.current?.forceGameOver();
     } else if (isTetris) {
       tetrisRef.current?.forceGameOver();
+    } else if (isBloqueBuster) {
+      bloqueBusterRef.current?.forceGameOver();
     } else {
       setOver(true);
     }
@@ -69,6 +74,9 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       } else if (isTetris) {
         if (next) tetrisRef.current?.pause();
         else tetrisRef.current?.resume();
+      } else if (isBloqueBuster) {
+        if (next) bloqueBusterRef.current?.pause();
+        else bloqueBusterRef.current?.resume();
       }
       return next;
     });
@@ -89,6 +97,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       asteroidsRef.current?.reset();
     } else if (isTetris) {
       tetrisRef.current?.reset();
+    } else if (isBloqueBuster) {
+      bloqueBusterRef.current?.reset();
     }
   };
 
@@ -163,6 +173,14 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
               onLivesChange={setLives}
               onLevelChange={setLevel}
               onLinesChange={setLines}
+              onGameOver={handleGameOver}
+            />
+          ) : isBloqueBuster ? (
+            <BloqueBusterGame
+              ref={bloqueBusterRef}
+              onScoreChange={setScore}
+              onLivesChange={setLives}
+              onLevelChange={setLevel}
               onGameOver={handleGameOver}
             />
           ) : (
