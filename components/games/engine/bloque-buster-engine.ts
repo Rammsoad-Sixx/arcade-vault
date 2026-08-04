@@ -1,11 +1,6 @@
 import { BLOQUE_BUSTER_LEVELS } from "@/lib/bloque-buster-levels";
-import {
-  drawFrame,
-  drawSprite,
-  EXPLOSION_DURATION,
-  EXPLOSION_FRAMES,
-  loadSpritesheet,
-} from "./bloque-buster-sprites";
+import { EXPLOSION_DURATION } from "./bloque-buster-sprites";
+import { SKINS, DEFAULT_SKIN, type SkinId, type SkinPalette } from "@/lib/skins";
 
 const W = 800;
 const H = 600;
@@ -71,6 +66,7 @@ export class BloqueBusterEngine {
   private ctx: CanvasRenderingContext2D;
   private canvas: HTMLCanvasElement;
   private callbacks: BloqueBusterEngineCallbacks;
+  private palette: SkinPalette;
 
   private paddle: Paddle = { x: 0, y: PADDLE_Y, w: PADDLE_W, h: PADDLE_H };
   private ball: Ball = { x: 0, y: 0, w: BALL_SIZE, h: BALL_SIZE, vx: BASE_BALL_VX, vy: BASE_BALL_VY };
@@ -92,15 +88,24 @@ export class BloqueBusterEngine {
   private lastTime: number | null = null;
   private rafId: number | null = null;
 
-  constructor(canvas: HTMLCanvasElement, callbacks: BloqueBusterEngineCallbacks) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    callbacks: BloqueBusterEngineCallbacks,
+    initialSkin: SkinId = DEFAULT_SKIN,
+  ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("No se pudo obtener el contexto 2D del canvas");
     this.canvas = canvas;
     this.ctx = ctx;
     this.callbacks = callbacks;
+    this.palette = SKINS[initialSkin];
     this.bounceSound = new Audio("/games/bloque-buster/sounds/ball-bounce.mp3");
     this.breakSound = new Audio("/games/bloque-buster/sounds/break-sound.mp3");
     this.initGame();
+  }
+
+  setSkin(skin: SkinId) {
+    this.palette = SKINS[skin];
   }
 
   private notify(fn: () => void) {
@@ -266,21 +271,45 @@ export class BloqueBusterEngine {
 
   private draw() {
     const ctx = this.ctx;
-    ctx.fillStyle = "#000";
+    const palette = this.palette;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
 
+    // Bloques: rol "secondary" (bloque secundario respecto al jugador)
+    ctx.shadowBlur = palette.glow ? 8 : 0;
+    ctx.shadowColor = palette.secondary;
+    ctx.fillStyle = palette.secondary;
     for (const block of this.blocks) {
-      if (block.alive) drawSprite(ctx, "block_" + block.color, block.x, block.y, block.w, block.h);
+      if (block.alive) ctx.fillRect(block.x + 1, block.y + 1, block.w - 2, block.h - 2);
     }
 
+    // Explosiones: flash puntual, rol "accent"
+    ctx.shadowColor = palette.accent;
+    ctx.fillStyle = palette.accent;
     for (const exp of this.explosions) {
-      const frames = EXPLOSION_FRAMES[exp.color];
-      const frameIndex = Math.min(Math.floor((exp.elapsed / EXPLOSION_DURATION) * frames.length), frames.length - 1);
-      drawFrame(ctx, frames[frameIndex], exp.x, exp.y, exp.w, exp.h);
+      ctx.globalAlpha = Math.max(0, 1 - exp.elapsed / EXPLOSION_DURATION);
+      ctx.shadowBlur = palette.glow ? 14 : 0;
+      ctx.fillRect(exp.x, exp.y, exp.w, exp.h);
     }
+    ctx.globalAlpha = 1;
 
-    drawSprite(ctx, "paddle", this.paddle.x, this.paddle.y, this.paddle.w, this.paddle.h);
-    drawSprite(ctx, "ball", this.ball.x, this.ball.y, this.ball.w, this.ball.h);
+    // Paddle y pelota: entidad controlada por el jugador, rol "primary"
+    ctx.shadowBlur = palette.glow ? 10 : 0;
+    ctx.shadowColor = palette.primary;
+    ctx.fillStyle = palette.primary;
+    ctx.fillRect(this.paddle.x, this.paddle.y, this.paddle.w, this.paddle.h);
+
+    ctx.beginPath();
+    ctx.arc(
+      this.ball.x + this.ball.w / 2,
+      this.ball.y + this.ball.h / 2,
+      this.ball.w / 2,
+      0,
+      Math.PI * 2,
+    );
+    ctx.fill();
+    ctx.shadowBlur = 0;
   }
 
   private loop = (ts: number) => {
@@ -292,10 +321,8 @@ export class BloqueBusterEngine {
     this.rafId = requestAnimationFrame(this.loop);
   };
 
-  async start() {
+  start() {
     if (this.destroyed || this.rafId !== null) return;
-    await loadSpritesheet();
-    if (this.destroyed) return;
     this.paused = false;
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);

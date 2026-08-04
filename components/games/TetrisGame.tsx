@@ -2,6 +2,7 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { TetrisEngine } from "@/components/games/engine/tetris-engine";
+import { DEFAULT_SKIN, type SkinId } from "@/lib/skins";
 
 export interface TetrisGameProps {
   onScoreChange: (score: number) => void;
@@ -9,6 +10,7 @@ export interface TetrisGameProps {
   onLevelChange: (level: number) => void;
   onLinesChange: (lines: number) => void;
   onGameOver: (finalScore: number) => void;
+  skin?: SkinId;
 }
 
 export interface TetrisGameHandle {
@@ -19,7 +21,7 @@ export interface TetrisGameHandle {
 }
 
 const TetrisGame = forwardRef<TetrisGameHandle, TetrisGameProps>(function TetrisGame(
-  { onScoreChange, onLivesChange, onLevelChange, onLinesChange, onGameOver },
+  { onScoreChange, onLivesChange, onLevelChange, onLinesChange, onGameOver, skin = DEFAULT_SKIN },
   ref,
 ) {
   const boardCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -38,13 +40,18 @@ const TetrisGame = forwardRef<TetrisGameHandle, TetrisGameProps>(function Tetris
     const nextCanvas = nextCanvasRef.current;
     if (!boardCanvas || !nextCanvas) return;
 
-    const engine = new TetrisEngine(boardCanvas, nextCanvas, {
-      onScoreChange,
-      onLivesChange,
-      onLevelChange,
-      onLinesChange,
-      onGameOver,
-    });
+    const engine = new TetrisEngine(
+      boardCanvas,
+      nextCanvas,
+      {
+        onScoreChange,
+        onLivesChange,
+        onLevelChange,
+        onLinesChange,
+        onGameOver,
+      },
+      skin,
+    );
     engineRef.current = engine;
     engine.start();
 
@@ -54,6 +61,10 @@ const TetrisGame = forwardRef<TetrisGameHandle, TetrisGameProps>(function Tetris
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    engineRef.current?.setSkin(skin);
+  }, [skin]);
 
   return (
     <div

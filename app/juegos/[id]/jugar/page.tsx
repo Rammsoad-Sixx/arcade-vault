@@ -232,6 +232,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
               onLevelChange={setLevel}
               onLinesChange={setLines}
               onGameOver={handleGameOver}
+              skin={skin}
             />
           ) : isBloqueBuster ? (
             <BloqueBusterGame
@@ -240,6 +241,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
               onLivesChange={setLives}
               onLevelChange={setLevel}
               onGameOver={handleGameOver}
+              skin={skin}
             />
           ) : (
             <div className="game-arena">
