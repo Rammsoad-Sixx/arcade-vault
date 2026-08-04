@@ -13,7 +13,7 @@ deuda — simplemente todavía no tienen motor.
 
 | id | Juego | Motor real | `clasico` | `retro` | `neon` | Estado |
 |---|---|---|---|---|---|---|
-| `asteroides` | ASTEROIDES | Sí | No | No | No | Sin implementar |
+| `asteroides` | ASTEROIDES | Sí | Sí | Sí | Sí | Completo |
 | `caida` | CAÍDA (Tetris) | Sí | No | No | No | Sin implementar |
 | `bloque-buster` | BLOQUE BUSTER (Arkanoid) | Sí | No | No | No | Sin implementar |
 | `serpentina` | SERPENTINA | No | — | — | — | Bloqueado: sin motor real |
@@ -23,9 +23,12 @@ deuda — simplemente todavía no tienen motor.
 | `ranaria` | RANARIA | No | — | — | — | Bloqueado: sin motor real |
 | `duelo-pixel` | DUELO PIXEL | No | — | — | — | Bloqueado: sin motor real |
 
-**Resumen:** 3 juegos elegibles (motor real), 0 con las 3 skins completas
-todavía. 6 juegos bloqueados por ser placeholder sin motor real — no cuentan
-como incumplimiento, son candidatos naturales a `/port-game` primero.
+**Resumen:** 3 juegos elegibles (motor real), 1 con las 3 skins completas
+(`asteroides`). 6 juegos bloqueados por ser placeholder sin motor real — no
+cuentan como incumplimiento, son candidatos naturales a `/port-game` primero.
 
-Última actualización: 2026-08-04 (estado inicial, antes de la primera
-corrida de `skin-designer` — todavía no se implementó ningún skin).
+Última actualización: 2026-08-04 — corrida #1 de `skin-designer`, implementó
+`asteroides` (`clasico`/`retro`/`neon` completos). El selector de skin en
+`app/juegos/[id]/jugar/page.tsx` ya es visible también para `caida` y
+`bloque-buster` (misma infraestructura compartida), pero sus engines todavía
+no leen la paleta activa.

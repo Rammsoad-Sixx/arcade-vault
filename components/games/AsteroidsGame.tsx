@@ -2,12 +2,14 @@
 
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { AsteroidsEngine } from "@/components/games/engine/asteroids-engine";
+import { DEFAULT_SKIN, type SkinId } from "@/lib/skins";
 
 export interface AsteroidsGameProps {
   onScoreChange: (score: number) => void;
   onLivesChange: (lives: number) => void;
   onLevelChange: (level: number) => void;
   onGameOver: (finalScore: number) => void;
+  skin?: SkinId;
 }
 
 export interface AsteroidsGameHandle {
@@ -19,7 +21,7 @@ export interface AsteroidsGameHandle {
 
 const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
   function AsteroidsGame(
-    { onScoreChange, onLivesChange, onLevelChange, onGameOver },
+    { onScoreChange, onLivesChange, onLevelChange, onGameOver, skin = DEFAULT_SKIN },
     ref,
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -36,12 +38,16 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
       const canvas = canvasRef.current;
       if (!canvas) return;
 
-      const engine = new AsteroidsEngine(canvas, {
-        onScoreChange,
-        onLivesChange,
-        onLevelChange,
-        onGameOver,
-      });
+      const engine = new AsteroidsEngine(
+        canvas,
+        {
+          onScoreChange,
+          onLivesChange,
+          onLevelChange,
+          onGameOver,
+        },
+        skin,
+      );
       engineRef.current = engine;
       engine.start();
 
@@ -51,6 +57,10 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
       };
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+      engineRef.current?.setSkin(skin);
+    }, [skin]);
 
     return (
       <canvas

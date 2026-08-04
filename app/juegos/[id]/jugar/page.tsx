@@ -1,13 +1,40 @@
 "use client";
 
-import { use, useEffect, useRef, useState } from "react";
+import { use, useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { GAMES } from "@/lib/games-data";
 import { useUser } from "@/lib/user-context";
+import { DEFAULT_SKIN, SKINS, type SkinId } from "@/lib/skins";
 import AsteroidsGame, { type AsteroidsGameHandle } from "@/components/games/AsteroidsGame";
 import TetrisGame, { type TetrisGameHandle } from "@/components/games/TetrisGame";
 import BloqueBusterGame, { type BloqueBusterGameHandle } from "@/components/games/BloqueBusterGame";
 import { saveScore } from "./actions";
+
+// Skin activa persistida en localStorage ("av_skin"), un solo valor global
+// compartido entre todos los juegos (mismo patrón que lib/user-context.tsx).
+const SKIN_STORAGE_KEY = "av_skin";
+type SkinListener = () => void;
+let skinListeners: SkinListener[] = [];
+
+function emitSkinChange() {
+  for (const listener of skinListeners) listener();
+}
+
+function subscribeSkin(listener: SkinListener) {
+  skinListeners = [...skinListeners, listener];
+  return () => {
+    skinListeners = skinListeners.filter((l) => l !== listener);
+  };
+}
+
+function getSkinSnapshot(): SkinId {
+  const raw = localStorage.getItem(SKIN_STORAGE_KEY);
+  return raw && raw in SKINS ? (raw as SkinId) : DEFAULT_SKIN;
+}
+
+function getSkinServerSnapshot(): SkinId {
+  return DEFAULT_SKIN;
+}
 
 export default function GamePlayer({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -25,6 +52,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [saved, setSaved] = useState(false);
   const [pending, setPending] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const skin = useSyncExternalStore(subscribeSkin, getSkinSnapshot, getSkinServerSnapshot);
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
   const tetrisRef = useRef<TetrisGameHandle>(null);
   const bloqueBusterRef = useRef<BloqueBusterGameHandle>(null);
@@ -32,7 +60,13 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const isAsteroids = id === "asteroides";
   const isTetris = id === "caida";
   const isBloqueBuster = id === "bloque-buster";
+  const hasRealEngine = isAsteroids || isTetris || isBloqueBuster;
   const name = nameOverride ?? (user ? user.name : "INVITADO");
+
+  const changeSkin = (next: SkinId) => {
+    localStorage.setItem(SKIN_STORAGE_KEY, next);
+    emitSkinChange();
+  };
 
   useEffect(() => {
     if (over || paused || isAsteroids || isTetris || isBloqueBuster) return;
@@ -156,6 +190,29 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
         </div>
       </div>
 
+      {hasRealEngine && (
+        <div
+          className="tw-section"
+          style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}
+        >
+          <span className="tw-label" style={{ marginBottom: 0 }}>
+            SKIN
+          </span>
+          <div style={{ display: "flex", gap: 8 }}>
+            {Object.values(SKINS).map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                className={`chip${skin === s.id ? " active" : ""}`}
+                onClick={() => changeSkin(s.id)}
+              >
+                {s.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="crt">
         <div className="crt-screen">
           {isAsteroids ? (
@@ -165,6 +222,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
               onLivesChange={setLives}
               onLevelChange={setLevel}
               onGameOver={handleGameOver}
+              skin={skin}
             />
           ) : isTetris ? (
             <TetrisGame
