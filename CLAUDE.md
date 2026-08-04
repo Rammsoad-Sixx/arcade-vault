@@ -11,6 +11,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - `/port-game` — variante especializada de `/spec` para portar un juego jugable real al catálogo con leaderboard en Supabase. Ya conoce el patrón validado en `specs/04-juego-asteroides.md` y `specs/05-leaderboard-y-tabla-juegos.md`, así que pregunta menos que `/spec` genérico. Fuente de juegos de referencia: `references/started-games/`. Definido en `.agents/skills/port-game/` (symlinkeado en `.claude/skills/port-game`).
 - `specs/.spec-config.yml` controla si `/spec-impl` crea la rama de git automáticamente (`AutoCreateBranch: true` por defecto).
 
+## Subagentes
+
+- `game-planner` (`.claude/agents/game-planner.md`) — subagente de solo lectura que planifica qué juego portar o crear a continuación: evalúa completar los placeholders de `lib/games-data.ts` (`serpentina`, `gloton`, `invasores`, `ranaria`, `duelo-pixel`) o proponer juegos arcade clásicos nuevos fuera del catálogo actual. Nunca escribe código ni crea specs — solo recomienda; el siguiente paso siempre es correr `/port-game` manualmente sobre el candidato elegido. Mantiene memoria persistente entre corridas en `game-planner/memory.md` (historial detallado interno) y publica un resumen curado en `references/games-references.md` (qué se sugirió, con qué estado y por qué) para no repetir propuestas ya hechas. Invocalo explícitamente pidiendo "usa game-planner" o preguntando qué juego conviene portar/agregar a continuación.
+
 ## Project
 
 Arcade Vault — plataforma para jugar online y competir por la mayor cantidad de puntos. Dejó de ser un scaffold: hay landing, biblioteca de juegos, 3 juegos jugables reales con motor propio, autenticación básica y un leaderboard persistido en Supabase.
@@ -25,7 +29,7 @@ Specs implementadas hasta ahora (ver `specs/`, numeradas y en orden):
 6. `06-juego-tetris.md` — Tetris (id de catálogo `caida`).
 7. `07-juego-arkanoid.md` — Arkanoid (id de catálogo `bloque-buster`, nombre en catálogo "Bloque Buster").
 
-De los 8 juegos listados en `lib/games-data.ts` (`GAMES`), solo 3 tienen motor jugable real hoy: `asteroides`, `caida` (Tetris) y `bloque-buster` (Arkanoid). El resto (`serpentina`, `gloton`, `invasores`, `ranaria`, `duelo-pixel`) son solo tarjetas de catálogo con datos de muestra — `/juegos/[id]/jugar` cae a una animación placeholder para esos ids. Portarlos es candidato natural para `/port-game`. Puedes consultar `implemented-games/implemented-games.md` para mas información.
+De los 8 juegos listados en `lib/games-data.ts` (`GAMES`), solo 3 tienen motor jugable real hoy: `asteroides`, `caida` (Tetris) y `bloque-buster` (Arkanoid). El resto (`serpentina`, `gloton`, `invasores`, `ranaria`, `duelo-pixel`) son solo tarjetas de catálogo con datos de muestra — `/juegos/[id]/jugar` cae a una animación placeholder para esos ids. Portarlos es candidato natural para `/port-game`. Puedes consultar `implemented-games/implemented-games.md` para mas información, y usar el subagente `game-planner` (ver `references/games-references.md`) para decidir qué portar o agregar a continuación.
 
 ## Commands
 
