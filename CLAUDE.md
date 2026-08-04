@@ -6,13 +6,26 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Skills
 
-Usa siempre /front-design para diseñar la interfaz de usuario.
+- Usa siempre `/front-design` para diseñar la interfaz de usuario.
+- El proyecto sigue Spec Driven Design vía `/spec` y `/spec-impl` (fernando-skills, instalado con `npx skills@latest add Klerith/fernando-skills`). Toda feature nueva empieza como un `.md` en `specs/` en estado `Draft` antes de implementarse.
+- `/port-game` — variante especializada de `/spec` para portar un juego jugable real al catálogo con leaderboard en Supabase. Ya conoce el patrón validado en `specs/04-juego-asteroides.md` y `specs/05-leaderboard-y-tabla-juegos.md`, así que pregunta menos que `/spec` genérico. Fuente de juegos de referencia: `references/started-games/`. Definido en `.agents/skills/port-game/` (symlinkeado en `.claude/skills/port-game`).
+- `specs/.spec-config.yml` controla si `/spec-impl` crea la rama de git automáticamente (`AutoCreateBranch: true` por defecto).
 
 ## Project
 
-Arcade Vault — a platform to play games online and compete for points ("Es una plataforma para jugar online y competir por la mayor cantidad de puntos"). Currently a fresh `create-next-app` scaffold; no game/scoring features are implemented yet.
+Arcade Vault — plataforma para jugar online y competir por la mayor cantidad de puntos. Dejó de ser un scaffold: hay landing, biblioteca de juegos, 3 juegos jugables reales con motor propio, autenticación básica y un leaderboard persistido en Supabase.
 
-Intended to follow Spec Driven Design (`/spec` and `/spec-impl`) per the [fernando-skills](https://github.com/Klerith/fernando-skills) conventions (installed via `npx skills@latest add Klerith/fernando-skills`). No spec files or `.claude/skills` exist in the repo yet — check for these before assuming the workflow is active.
+Specs implementadas hasta ahora (ver `specs/`, numeradas y en orden):
+
+1. `01-mvp-visual.md` — sistema visual retro-arcade (CRT, neón, pixel fonts).
+2. `02-home-landing.md` — landing page.
+3. `03-supabase-install.md` — instalación e integración de Supabase.
+4. `04-juego-asteroides.md` — primer juego jugable real (patrón base para portar juegos).
+5. `05-leaderboard-y-tabla-juegos.md` — tabla `scores` en Supabase + Salón de la Fama.
+6. `06-juego-tetris.md` — Tetris (id de catálogo `caida`).
+7. `07-juego-arkanoid.md` — Arkanoid (id de catálogo `bloque-buster`, nombre en catálogo "Bloque Buster").
+
+De los 8 juegos listados en `lib/games-data.ts` (`GAMES`), solo 3 tienen motor jugable real hoy: `asteroides`, `caida` (Tetris) y `bloque-buster` (Arkanoid). El resto (`serpentina`, `gloton`, `invasores`, `ranaria`, `duelo-pixel`) son solo tarjetas de catálogo con datos de muestra — `/juegos/[id]/jugar` cae a una animación placeholder para esos ids. Portarlos es candidato natural para `/port-game`. Puedes consultar `implemented-games/implemented-games.md` para mas información.
 
 ## Commands
 
@@ -23,7 +36,7 @@ npm run start    # run production build
 npm run lint     # eslint (flat config, eslint.config.mjs)
 ```
 
-There is no test setup (no test script, no test files, no test runner dependency) — do not assume Jest/Vitest/Playwright are configured.
+No hay test setup (sin script de test, sin archivos de test, sin dependencia de test runner) — no asumas que Jest/Vitest/Playwright están configurados.
 
 ## Critical: this is not the Next.js you know
 
@@ -37,8 +50,33 @@ When in doubt about any App Router API, prefer reading the bundled docs over rel
 ## Architecture
 
 - **App Router only** (`app/`), TypeScript, React 19. No `pages/` directory.
-- `app/layout.tsx` — root layout; loads `Geist`/`Geist_Mono` via `next/font/google` and exposes them as CSS variables (`--font-geist-sans`, `--font-geist-mono`).
-- `app/page.tsx` — home route (still the default create-next-app starter content).
-- `app/globals.css` — Tailwind CSS v4 entry point, loaded via `@tailwindcss/postcss` (configured in `postcss.config.mjs`); there is no `tailwind.config.js` (v4 is CSS-first).
+- `app/layout.tsx` — root layout; loads `Geist`/`Geist_Mono` via `next/font/google`, expone `--font-geist-sans`/`--font-geist-mono`, y envuelve la app en `UserProvider` (`lib/user-context.tsx`).
+- `app/page.tsx` — landing (`/`).
+- `app/biblioteca/page.tsx` — catálogo de juegos, filtrable por categoría y búsqueda (`"use client"`, filtra `GAMES` de `lib/games-data.ts`).
+- `app/juegos/[id]/page.tsx` — detalle de un juego (server component) + top scores del juego vía `getTopScores`.
+- `app/juegos/[id]/jugar/page.tsx` — reproductor del juego (`"use client"`): HUD (puntuación/vidas/nivel/líneas), monta el motor correspondiente según `id` (`asteroides` → `AsteroidsGame`, `caida` → `TetrisGame`, `bloque-buster` → `BloqueBusterGame`; cualquier otro id → animación placeholder), maneja pausa/reinicio/fin de partida y guarda el score final vía la server action `actions.ts`.
+- `app/juegos/[id]/jugar/actions.ts` — server action `saveScore(gameId, name, score)` que inserta en la tabla `scores` de Supabase usando el cliente admin (service role, sin RLS).
+- `app/salon/page.tsx` — Salón de la Fama / leaderboard (server component): tabs por juego, podio top 3 + tabla, lee `getTopScores` de `lib/scores.ts`.
+- `app/auth/page.tsx` — login/registro mock (`"use client"`): no hay backend de auth real; `login()`/`logout()` solo escriben el nombre de usuario en `localStorage` vía `useUser()`. También permite "jugar como invitado".
+- `app/globals.css` — Tailwind CSS v4 entry point (`@tailwindcss/postcss`, sin `tailwind.config.js`, v4 es CSS-first) + el sistema visual retro-arcade (CRT, neón, pixel fonts) definido en spec 01.
 - Path alias `@/*` → project root (`tsconfig.json`).
 - `public/` — static assets served at `/`.
+
+### Componentes y lógica compartida
+
+- `components/Nav.tsx` — nav superior + panel móvil, resalta la sección activa, muestra usuario logueado o botón de login.
+- `components/GameCard.tsx` / `components/MiniGameCard.tsx` — tarjetas de juego para biblioteca/landing.
+- `components/games/AsteroidsGame.tsx`, `TetrisGame.tsx`, `BloqueBusterGame.tsx` — wrappers React (forwardRef con handle imperativo: `pause`/`resume`/`reset`/`forceGameOver`) que montan cada motor sobre `<canvas>`.
+- `components/games/engine/` — motores de juego en TS puro (sin React): `asteroids-engine.ts`, `tetris-engine.ts`, `bloque-buster-engine.ts`, `bloque-buster-sprites.ts`.
+- `lib/games-data.ts` — catálogo de juegos (`GAMES`, tipos `GameCategory`/`GameColor`), categorías (`CATS`) y datos de muestra para nombres/scores sintéticos usados donde aún no hay datos reales.
+- `lib/bloque-buster-levels.ts` — definición de niveles del Arkanoid.
+- `lib/scores.ts` — `getTopScores(gameId, limit)` (lee de Supabase) y `formatScoreDate`.
+- `lib/user-context.tsx` — `UserProvider`/`useUser()`, sesión mock persistida en `localStorage` (clave `av_user`), sincronizada entre componentes con `useSyncExternalStore`.
+
+### Supabase
+
+- `lib/supabase/client.ts` — cliente browser (`createBrowserClient`, usa `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`).
+- `lib/supabase/server.ts` — cliente server-side (`createServerClient`, integrado con `next/headers` cookies) para Server Components/Actions que necesitan contexto de request.
+- `lib/supabase/admin.ts` — cliente con `SUPABASE_SERVICE_ROLE_KEY` (bypassa RLS), usado solo en la server action de guardar score.
+- Variables de entorno en `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SERVICE_ROLE_KEY`.
+- Tabla `scores` (definida en spec 05): `id`, `game_id`, `name`, `score`, `created_at` — sin migraciones versionadas en el repo (no hay carpeta `supabase/`); el MCP de Supabase (`.mcp.json`, proyecto `sfifdojgcfvdnadojqmq`) es la vía para inspeccionar/alterar el esquema remoto.
