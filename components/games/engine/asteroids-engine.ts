@@ -1,3 +1,5 @@
+import { SKINS, DEFAULT_SKIN, type SkinId, type SkinPalette } from "@/lib/skins";
+
 const W = 800;
 const H = 600;
 
@@ -45,11 +47,14 @@ class Bullet {
     if (this.ttl <= 0) this.dead = true;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
-    ctx.fillStyle = "#fff";
+  draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
+    ctx.shadowBlur = palette.glow ? 8 : 0;
+    ctx.shadowColor = palette.secondary;
+    ctx.fillStyle = palette.secondary;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fill();
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -103,11 +108,13 @@ class Asteroid {
     ];
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
-    ctx.strokeStyle = "#fff";
+    ctx.shadowBlur = palette.glow ? 10 : 0;
+    ctx.shadowColor = palette.secondary;
+    ctx.strokeStyle = palette.secondary;
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
     ctx.beginPath();
@@ -148,22 +155,25 @@ class PowerUp {
     if (this.ttl <= 0) this.dead = true;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     if (this.ttl < 2 && Math.floor(this.ttl * 8) % 2 === 0) return;
     const pulse = 0.85 + Math.sin(performance.now() / 150) * 0.15;
+    ctx.shadowBlur = palette.glow ? 12 : 0;
+    ctx.shadowColor = palette.accent;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(Math.PI / 4);
-    ctx.strokeStyle = "#0ff";
+    ctx.strokeStyle = palette.accent;
     ctx.lineWidth = 2;
     const r = this.radius * pulse;
     ctx.strokeRect(-r, -r, r * 2, r * 2);
     ctx.restore();
-    ctx.fillStyle = "#0ff";
+    ctx.fillStyle = palette.accent;
     ctx.font = "bold 12px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("3x", this.x, this.y);
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -238,7 +248,7 @@ class Ship {
     return [new Bullet(ox, oy, this.angle)];
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     if (this.dead) return;
     // Parpadeo durante invencibilidad de reaparición
     if (this.invincible > 0 && Math.floor(this.invincible * 8) % 2 === 0) return;
@@ -246,7 +256,9 @@ class Ship {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.angle);
-    ctx.strokeStyle = "#fff";
+    ctx.shadowBlur = palette.glow ? 10 : 0;
+    ctx.shadowColor = palette.primary;
+    ctx.strokeStyle = palette.primary;
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
 
@@ -265,8 +277,10 @@ class Ship {
       ctx.moveTo(-8, -4);
       ctx.lineTo(-8 - rand(6, 14), 0);
       ctx.lineTo(-8, 4);
-      ctx.strokeStyle = "rgba(255, 130, 0, 0.85)";
+      ctx.globalAlpha = 0.85;
+      ctx.strokeStyle = palette.accent;
       ctx.stroke();
+      ctx.globalAlpha = 1;
     }
 
     ctx.restore();
@@ -301,14 +315,19 @@ class Particle {
     if (this.ttl <= 0) this.dead = true;
   }
 
-  draw(ctx: CanvasRenderingContext2D) {
+  draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     const alpha = this.ttl / this.life;
-    ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(2)})`;
+    ctx.globalAlpha = alpha;
+    ctx.shadowBlur = palette.glow ? 6 : 0;
+    ctx.shadowColor = palette.accent;
+    ctx.strokeStyle = palette.accent;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(this.x, this.y);
     ctx.lineTo(this.x - this.vx * 0.05, this.y - this.vy * 0.05);
     ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
   }
 }
 
@@ -324,6 +343,7 @@ type GameState = "playing" | "dead" | "gameover";
 export class AsteroidsEngine {
   private ctx: CanvasRenderingContext2D;
   private callbacks: AsteroidsEngineCallbacks;
+  private palette: SkinPalette;
 
   private keys: Record<string, boolean> = {};
   private justPressed: Record<string, boolean> = {};
@@ -347,13 +367,22 @@ export class AsteroidsEngine {
   private lastTime: number | null = null;
   private rafId: number | null = null;
 
-  constructor(canvas: HTMLCanvasElement, callbacks: AsteroidsEngineCallbacks) {
+  constructor(
+    canvas: HTMLCanvasElement,
+    callbacks: AsteroidsEngineCallbacks,
+    initialSkin: SkinId = DEFAULT_SKIN,
+  ) {
     const ctx = canvas.getContext("2d");
     if (!ctx) throw new Error("No se pudo obtener el contexto 2D del canvas");
     this.ctx = ctx;
     this.callbacks = callbacks;
+    this.palette = SKINS[initialSkin];
     this.ship = new Ship();
     this.initGame();
+  }
+
+  setSkin(skin: SkinId) {
+    this.palette = SKINS[skin];
   }
 
   private notify(fn: () => void) {
@@ -369,15 +398,25 @@ export class AsteroidsEngine {
     });
   }
 
+  /** Equivalente a keydown: marca la tecla como sostenida y dispara "justPressed" si corresponde. */
+  pressVirtualKey(code: string) {
+    if (!this.keys[code]) this.justPressed[code] = true;
+    this.keys[code] = true;
+  }
+
+  /** Equivalente a keyup: libera la tecla sostenida. */
+  releaseVirtualKey(code: string) {
+    this.keys[code] = false;
+  }
+
   private handleKeyDown = (e: KeyboardEvent) => {
     if (PREVENTED_CODES.has(e.code)) e.preventDefault();
-    if (!this.keys[e.code]) this.justPressed[e.code] = true;
-    this.keys[e.code] = true;
+    this.pressVirtualKey(e.code);
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
     if (PREVENTED_CODES.has(e.code)) e.preventDefault();
-    this.keys[e.code] = false;
+    this.releaseVirtualKey(e.code);
   };
 
   private pressed(code: string) {
@@ -524,14 +563,16 @@ export class AsteroidsEngine {
 
   private draw() {
     const ctx = this.ctx;
-    ctx.fillStyle = "#000";
+    const palette = this.palette;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
 
-    this.particles.forEach((p) => p.draw(ctx));
-    this.asteroids.forEach((a) => a.draw(ctx));
-    this.powerUps.forEach((p) => p.draw(ctx));
-    this.bullets.forEach((b) => b.draw(ctx));
-    this.ship.draw(ctx);
+    this.particles.forEach((p) => p.draw(ctx, palette));
+    this.asteroids.forEach((a) => a.draw(ctx, palette));
+    this.powerUps.forEach((p) => p.draw(ctx, palette));
+    this.bullets.forEach((b) => b.draw(ctx, palette));
+    this.ship.draw(ctx, palette);
   }
 
   private loop = (ts: number) => {

@@ -1,20 +1,10 @@
+import { SKINS, DEFAULT_SKIN, type SkinId, type SkinPalette } from "@/lib/skins";
+
 const COLS = 10;
 const ROWS = 20;
 const BLOCK = 30;
 const NEXT_BLOCK = 30;
 const NEXT_CANVAS_SIZE = 120;
-
-const COLORS: (string | null)[] = [
-  null,
-  "#4dd0e1", // I - cyan
-  "#ffd54f", // O - yellow
-  "#ba68c8", // T - purple
-  "#81c784", // S - green
-  "#e57373", // Z - red
-  "#90caf9", // J - pale blue
-  "#ffb74d", // L - orange
-  "#9e9e9e", // N - tuerca (gris metálico)
-];
 
 const PIECES: (number[][] | null)[] = [
   null,
@@ -55,6 +45,7 @@ export class TetrisEngine {
   private ctx: CanvasRenderingContext2D;
   private nextCtx: CanvasRenderingContext2D;
   private callbacks: TetrisEngineCallbacks;
+  private palette: SkinPalette;
 
   private board: Board = [];
   private current: Piece;
@@ -76,6 +67,7 @@ export class TetrisEngine {
     boardCanvas: HTMLCanvasElement,
     nextCanvas: HTMLCanvasElement,
     callbacks: TetrisEngineCallbacks,
+    initialSkin: SkinId = DEFAULT_SKIN,
   ) {
     const ctx = boardCanvas.getContext("2d");
     const nextCtx = nextCanvas.getContext("2d");
@@ -83,6 +75,7 @@ export class TetrisEngine {
     this.ctx = ctx;
     this.nextCtx = nextCtx;
     this.callbacks = callbacks;
+    this.palette = SKINS[initialSkin];
     this.board = this.createBoard();
     this.next = this.randomPiece();
     this.current = this.randomPiece();
@@ -221,19 +214,26 @@ export class TetrisEngine {
     this.drawNext();
   }
 
+  // Cada tipo de pieza (I/O/T/S/Z/J/L/N) ya no tiene un color propio: el
+  // colorIndex (1-8) solo indica "hay bloque acá"; el color real siempre
+  // viene del rol de paleta activo (primary/secondary/accent) según el
+  // llamador. `glow` se aplica por bloque vía shadowBlur/shadowColor.
   private drawBlock(
     context: CanvasRenderingContext2D,
     x: number,
     y: number,
     colorIndex: number,
     size: number,
+    color: string,
     alpha?: number,
   ) {
     if (!colorIndex) return;
-    const color = COLORS[colorIndex];
     context.globalAlpha = alpha ?? 1;
-    context.fillStyle = color ?? "#fff";
+    context.shadowBlur = this.palette.glow ? 8 : 0;
+    context.shadowColor = color;
+    context.fillStyle = color;
     context.fillRect(x * size + 1, y * size + 1, size - 2, size - 2);
+    context.shadowBlur = 0;
     context.fillStyle = "rgba(255,255,255,0.12)";
     context.fillRect(x * size + 1, y * size + 1, size - 2, 4);
     context.globalAlpha = 1;
@@ -241,10 +241,10 @@ export class TetrisEngine {
 
   private drawGrid() {
     const ctx = this.ctx;
-    ctx.strokeStyle =
-      typeof document !== "undefined"
-        ? getComputedStyle(document.body).getPropertyValue("--line").trim() || "rgba(0,245,255,0.18)"
-        : "rgba(0,245,255,0.18)";
+    ctx.save();
+    ctx.shadowBlur = 0;
+    ctx.strokeStyle = this.palette.secondary;
+    ctx.globalAlpha = this.palette.glow ? 0.28 : 0.15;
     ctx.lineWidth = 0.5;
     for (let c = 1; c < COLS; c++) {
       ctx.beginPath();
@@ -258,36 +258,50 @@ export class TetrisEngine {
       ctx.lineTo(COLS * BLOCK, r * BLOCK);
       ctx.stroke();
     }
+    ctx.restore();
   }
 
   private draw() {
     const ctx = this.ctx;
-    ctx.clearRect(0, 0, COLS * BLOCK, ROWS * BLOCK);
+    const palette = this.palette;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = palette.background;
+    ctx.fillRect(0, 0, COLS * BLOCK, ROWS * BLOCK);
     this.drawGrid();
 
+    // Piezas ya asentadas en el tablero: rol "secondary"
     for (let r = 0; r < ROWS; r++)
-      for (let c = 0; c < COLS; c++) this.drawBlock(ctx, c, r, this.board[r][c], BLOCK);
+      for (let c = 0; c < COLS; c++)
+        this.drawBlock(ctx, c, r, this.board[r][c], BLOCK, palette.secondary);
 
+    // Ghost (previsualización de dónde aterriza la pieza): resalte puntual,
+    // rol "accent" — antes reusaba el color de la pieza con alpha reducido.
     const gy = this.ghostY();
     for (let r = 0; r < this.current.shape.length; r++)
       for (let c = 0; c < this.current.shape[r].length; c++)
         if (this.current.shape[r][c])
-          this.drawBlock(ctx, this.current.x + c, gy + r, this.current.shape[r][c], BLOCK, 0.2);
+          this.drawBlock(ctx, this.current.x + c, gy + r, this.current.shape[r][c], BLOCK, palette.accent, 0.25);
 
+    // Pieza activa, controlada por el jugador: rol "primary"
     for (let r = 0; r < this.current.shape.length; r++)
       for (let c = 0; c < this.current.shape[r].length; c++)
-        this.drawBlock(ctx, this.current.x + c, this.current.y + r, this.current.shape[r][c], BLOCK);
+        this.drawBlock(ctx, this.current.x + c, this.current.y + r, this.current.shape[r][c], BLOCK, palette.primary);
   }
 
   private drawNext() {
     const ctx = this.nextCtx;
-    ctx.clearRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
+    const palette = this.palette;
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = palette.background;
+    ctx.fillRect(0, 0, NEXT_CANVAS_SIZE, NEXT_CANVAS_SIZE);
     const shape = this.next.shape;
     const offX = Math.floor((4 - shape[0].length) / 2);
     const offY = Math.floor((4 - shape.length) / 2);
+    // Preview de la próxima pieza: mismo rol "primary" que la pieza activa
+    // (es la próxima entidad bajo control del jugador).
     for (let r = 0; r < shape.length; r++)
       for (let c = 0; c < shape[r].length; c++)
-        this.drawBlock(ctx, offX + c, offY + r, shape[r][c], NEXT_BLOCK);
+        this.drawBlock(ctx, offX + c, offY + r, shape[r][c], NEXT_BLOCK, palette.primary);
   }
 
   private endGame() {
@@ -298,10 +312,8 @@ export class TetrisEngine {
     });
   }
 
-  private handleKeyDown = (e: KeyboardEvent) => {
-    if (PREVENTED_CODES.has(e.code)) e.preventDefault();
-    if (this.paused || this.state === "gameover") return;
-    switch (e.code) {
+  private runAction(code: string) {
+    switch (code) {
       case "ArrowLeft":
         if (!this.collide(this.current.shape, this.current.x - 1, this.current.y)) this.current.x--;
         break;
@@ -319,6 +331,17 @@ export class TetrisEngine {
         this.hardDrop();
         break;
     }
+  }
+
+  /** Ejecuta la misma acción discreta del switch de teclado. Sin release: Caída no tiene keyup. */
+  pressVirtualKey(code: string) {
+    if (this.paused || this.state === "gameover") return;
+    this.runAction(code);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (PREVENTED_CODES.has(e.code)) e.preventDefault();
+    this.pressVirtualKey(e.code);
   };
 
   private initGame() {
@@ -372,6 +395,10 @@ export class TetrisEngine {
   resume() {
     if (this.destroyed) return;
     this.paused = false;
+  }
+
+  setSkin(skin: SkinId) {
+    this.palette = SKINS[skin];
   }
 
   reset() {
