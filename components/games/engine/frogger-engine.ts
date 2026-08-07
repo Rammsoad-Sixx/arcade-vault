@@ -491,36 +491,68 @@ export class FroggerEngine {
     ctx.fillRect(0, ROW_GOALS * CELL, CANVAS_W, CELL);
     ctx.restore();
 
+    // Metas: batcheadas en 3 pasadas (fondo / contorno / rana lograda) en vez
+    // de un toggle de shadowBlur por cada una de las 5 — ver SPEC 10.
     for (let i = 0; i < GOAL_COUNT; i++) {
       const x = (1 + i * 3) * CELL;
       const y = ROW_GOALS * CELL;
       ctx.fillStyle = palette.background;
       ctx.fillRect(x + 2, y + 2, CELL * 2 - 4, CELL - 4);
-      ctx.shadowBlur = palette.glow ? 6 : 0;
-      ctx.shadowColor = palette.accent;
-      ctx.strokeStyle = palette.accent;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(x + 2, y + 2, CELL * 2 - 4, CELL - 4);
-      ctx.shadowBlur = 0;
-      if (this.goals[i]) {
-        ctx.shadowBlur = palette.glow ? 8 : 0;
-        ctx.shadowColor = palette.primary;
-        ctx.fillStyle = palette.primary;
-        ctx.beginPath();
-        ctx.ellipse(x + CELL, y + CELL / 2, 12, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }
     }
+    ctx.shadowBlur = palette.glow ? 6 : 0;
+    ctx.shadowColor = palette.accent;
+    ctx.strokeStyle = palette.accent;
+    ctx.lineWidth = 2;
+    for (let i = 0; i < GOAL_COUNT; i++) {
+      const x = (1 + i * 3) * CELL;
+      const y = ROW_GOALS * CELL;
+      ctx.strokeRect(x + 2, y + 2, CELL * 2 - 4, CELL - 4);
+    }
+    ctx.shadowBlur = palette.glow ? 8 : 0;
+    ctx.shadowColor = palette.primary;
+    ctx.fillStyle = palette.primary;
+    for (let i = 0; i < GOAL_COUNT; i++) {
+      if (!this.goals[i]) continue;
+      const x = (1 + i * 3) * CELL;
+      const y = ROW_GOALS * CELL;
+      ctx.beginPath();
+      ctx.ellipse(x + CELL, y + CELL / 2, 12, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.shadowBlur = 0;
 
+    // Carriles: shadowBlur/shadowColor fijado UNA vez por carril (cada carril
+    // es homogéneo por tipo) en vez de una vez por entidad — ver SPEC 10.
     for (const lane of this.lanes) {
-      for (const e of lane.entities) this.drawEntity(e, lane.row);
+      const sample = lane.entities[0];
+      if (!sample) continue;
+
+      if (sample.type === "car" || sample.type === "truck") {
+        ctx.shadowBlur = palette.glow ? 8 : 0;
+        ctx.shadowColor = palette.secondary;
+        for (const e of lane.entities) this.drawEntityGlow(e, lane.row);
+      } else if (sample.type === "log") {
+        ctx.shadowBlur = palette.glow ? 8 : 0;
+        ctx.shadowColor = palette.accent;
+        for (const e of lane.entities) this.drawEntityGlow(e, lane.row);
+      } else {
+        // carril de tortugas: solo las visibles (no sumergidas) llevan brillo
+        ctx.shadowBlur = palette.glow ? 8 : 0;
+        ctx.shadowColor = palette.accent;
+        for (const e of lane.entities) {
+          if (!e.submerged) this.drawEntityGlow(e, lane.row);
+        }
+      }
+      ctx.shadowBlur = 0;
+
+      for (const e of lane.entities) this.drawEntityDetail(e, lane.row);
     }
 
     this.drawFrog();
   }
 
-  private drawEntity(e: Entity, row: number) {
+  /** Fase con brillo: solo la forma que lleva shadowBlur. El llamador ya lo fijó para todo el carril. */
+  private drawEntityGlow(e: Entity, row: number) {
     const ctx = this.ctx;
     const palette = this.palette;
     const x = e.col * CELL;
@@ -528,22 +560,39 @@ export class FroggerEngine {
     const w = e.width * CELL;
 
     if (e.type === "car") {
-      ctx.shadowBlur = palette.glow ? 8 : 0;
-      ctx.shadowColor = palette.secondary;
       ctx.fillStyle = palette.secondary;
       ctx.fillRect(x + 2, y + 8, w - 4, CELL - 16);
-      ctx.shadowBlur = 0;
+    } else if (e.type === "truck") {
+      ctx.fillStyle = palette.secondary;
+      ctx.fillRect(x + 2, y + 6, w - 4, CELL - 12);
+    } else if (e.type === "log") {
+      ctx.fillStyle = palette.accent;
+      ctx.fillRect(x + 2, y + 8, w - 4, CELL - 16);
+    } else if (!e.submerged) {
+      ctx.fillStyle = palette.accent;
+      for (let i = 0; i < e.width; i++) {
+        ctx.beginPath();
+        ctx.arc(x + i * CELL + CELL / 2, y + CELL / 2, CELL / 2 - 6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  /** Fase de detalle: sin shadowBlur (el llamador ya lo dejó en 0 para todo el carril). */
+  private drawEntityDetail(e: Entity, row: number) {
+    const ctx = this.ctx;
+    const palette = this.palette;
+    const x = e.col * CELL;
+    const y = row * CELL;
+    const w = e.width * CELL;
+
+    if (e.type === "car") {
       ctx.fillStyle = "rgba(0,0,0,0.55)"; // ruedas: detalle neutro, no identidad
       ctx.beginPath();
       ctx.arc(x + 10, y + CELL - 10, 5, 0, Math.PI * 2);
       ctx.arc(x + w - 10, y + CELL - 10, 5, 0, Math.PI * 2);
       ctx.fill();
     } else if (e.type === "truck") {
-      ctx.shadowBlur = palette.glow ? 8 : 0;
-      ctx.shadowColor = palette.secondary;
-      ctx.fillStyle = palette.secondary;
-      ctx.fillRect(x + 2, y + 6, w - 4, CELL - 12);
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 0.55;
       ctx.fillStyle = palette.secondary; // cabina: mismo color, alpha reducido
       ctx.fillRect(x + 2, y + 6, 14, CELL - 12);
@@ -554,11 +603,6 @@ export class FroggerEngine {
       ctx.arc(x + w - 10, y + CELL - 6, 5, 0, Math.PI * 2);
       ctx.fill();
     } else if (e.type === "log") {
-      ctx.shadowBlur = palette.glow ? 8 : 0;
-      ctx.shadowColor = palette.accent;
-      ctx.fillStyle = palette.accent;
-      ctx.fillRect(x + 2, y + 8, w - 4, CELL - 16);
-      ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(0,0,0,0.35)"; // vetas de madera: detalle neutro
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -578,15 +622,6 @@ export class FroggerEngine {
       }
       ctx.globalAlpha = 1;
     } else {
-      ctx.shadowBlur = palette.glow ? 8 : 0;
-      ctx.shadowColor = palette.accent;
-      ctx.fillStyle = palette.accent;
-      for (let i = 0; i < e.width; i++) {
-        ctx.beginPath();
-        ctx.arc(x + i * CELL + CELL / 2, y + CELL / 2, CELL / 2 - 6, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.shadowBlur = 0;
       ctx.strokeStyle = "rgba(0,0,0,0.35)"; // caparazón: detalle neutro
       for (let i = 0; i < e.width; i++) {
         ctx.beginPath();
