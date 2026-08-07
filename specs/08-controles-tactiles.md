@@ -1,6 +1,6 @@
 # SPEC 08 — Controles táctiles para dispositivos móviles
 
-> **Status:** Aprobado
+> **Status:** Implementado
 > **Depends on:** SPEC 04 (contrato engine/wrapper), SPEC 06 (Tetris), SPEC 07 (Arkanoid)
 > **Date:** 2026-08-07
 > **Objective:** Agregar un overlay de controles táctiles (D-pad diamante + botón de acción, superpuesto sobre el canvas) para Asteroides y Caída, y arrastre táctil directo sobre el canvas para la paleta de Bloque Buster, visibles únicamente en viewport móvil (mismo breakpoint que el menú hamburguesa, `max-width: 840px`), de modo que los 3 juegos con motor real sean jugables por completo en una pantalla táctil.
