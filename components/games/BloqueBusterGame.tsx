@@ -67,7 +67,7 @@ const BloqueBusterGame = forwardRef<BloqueBusterGameHandle, BloqueBusterGameProp
         ref={canvasRef}
         width={800}
         height={600}
-        style={{ width: "100%", height: "100%" }}
+        style={{ width: "100%", height: "100%", touchAction: "none" }}
       />
     );
   },

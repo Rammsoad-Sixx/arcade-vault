@@ -3,6 +3,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { TetrisEngine } from "@/components/games/engine/tetris-engine";
 import { DEFAULT_SKIN, type SkinId } from "@/lib/skins";
+import { TouchControls } from "@/components/games/TouchControls";
+import { useIsMobileViewport } from "@/lib/use-is-mobile-viewport";
 
 export interface TetrisGameProps {
   onScoreChange: (score: number) => void;
@@ -27,6 +29,7 @@ const TetrisGame = forwardRef<TetrisGameHandle, TetrisGameProps>(function Tetris
   const boardCanvasRef = useRef<HTMLCanvasElement>(null);
   const nextCanvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<TetrisEngine | null>(null);
+  const isMobile = useIsMobileViewport();
 
   useImperativeHandle(ref, () => ({
     pause: () => engineRef.current?.pause(),
@@ -67,37 +70,48 @@ const TetrisGame = forwardRef<TetrisGameHandle, TetrisGameProps>(function Tetris
   }, [skin]);
 
   return (
-    <div
-      style={{
-        position: "absolute",
-        inset: 0,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-      }}
-    >
-      <canvas
-        ref={boardCanvasRef}
-        width={300}
-        height={600}
-        style={{ height: "100%", width: "auto" }}
-      />
-      <canvas
-        ref={nextCanvasRef}
-        width={120}
-        height={120}
+    <>
+      <div
         style={{
           position: "absolute",
-          top: 12,
-          right: 12,
-          width: 72,
-          height: 72,
-          background: "rgba(0,0,0,0.55)",
-          border: "1px solid var(--line)",
-          borderRadius: 6,
+          inset: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
         }}
-      />
-    </div>
+      >
+        <canvas
+          ref={boardCanvasRef}
+          width={300}
+          height={600}
+          style={{ height: "100%", width: "auto", touchAction: "none" }}
+        />
+        <canvas
+          ref={nextCanvasRef}
+          width={120}
+          height={120}
+          style={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            width: 72,
+            height: 72,
+            background: "rgba(0,0,0,0.55)",
+            border: "1px solid var(--line)",
+            borderRadius: 6,
+            touchAction: "none",
+          }}
+        />
+      </div>
+      {isMobile && (
+        <TouchControls
+          directions={{ left: "ArrowLeft", right: "ArrowRight", down: "ArrowDown", up: "ArrowUp" }}
+          actions={[{ code: "Space", label: "CAER" }]}
+          onPress={(code) => engineRef.current?.pressVirtualKey(code)}
+          onRelease={() => {}}
+        />
+      )}
+    </>
   );
 });
 

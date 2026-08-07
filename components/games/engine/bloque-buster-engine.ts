@@ -176,11 +176,28 @@ export class BloqueBusterEngine {
     }
   };
 
-  private handleMouseMove = (e: MouseEvent) => {
+  /** Misma fórmula de escala que ya usaba `handleMouseMove`, reutilizada por mouse y touch. */
+  movePaddleTo(clientX: number) {
     const rect = this.canvas.getBoundingClientRect();
     const scaleX = this.canvas.width / rect.width;
-    const mouseX = (e.clientX - rect.left) * scaleX;
-    this.paddle.x = Math.max(0, Math.min(W - this.paddle.w, mouseX - this.paddle.w / 2));
+    const x = (clientX - rect.left) * scaleX;
+    this.paddle.x = Math.max(0, Math.min(W - this.paddle.w, x - this.paddle.w / 2));
+  }
+
+  private handleMouseMove = (e: MouseEvent) => {
+    this.movePaddleTo(e.clientX);
+  };
+
+  private handleTouchStart = (e: TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (touch) this.movePaddleTo(touch.clientX);
+  };
+
+  private handleTouchMove = (e: TouchEvent) => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    if (touch) this.movePaddleTo(touch.clientX);
   };
 
   private initGame() {
@@ -327,6 +344,8 @@ export class BloqueBusterEngine {
     window.addEventListener("keydown", this.handleKeyDown);
     window.addEventListener("keyup", this.handleKeyUp);
     this.canvas.addEventListener("mousemove", this.handleMouseMove);
+    this.canvas.addEventListener("touchstart", this.handleTouchStart, { passive: false });
+    this.canvas.addEventListener("touchmove", this.handleTouchMove, { passive: false });
     this.notifyAll();
     this.lastTime = null;
     this.rafId = requestAnimationFrame(this.loop);
@@ -364,5 +383,7 @@ export class BloqueBusterEngine {
     window.removeEventListener("keydown", this.handleKeyDown);
     window.removeEventListener("keyup", this.handleKeyUp);
     this.canvas.removeEventListener("mousemove", this.handleMouseMove);
+    this.canvas.removeEventListener("touchstart", this.handleTouchStart);
+    this.canvas.removeEventListener("touchmove", this.handleTouchMove);
   }
 }

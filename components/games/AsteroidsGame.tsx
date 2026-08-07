@@ -3,6 +3,8 @@
 import { forwardRef, useEffect, useImperativeHandle, useRef } from "react";
 import { AsteroidsEngine } from "@/components/games/engine/asteroids-engine";
 import { DEFAULT_SKIN, type SkinId } from "@/lib/skins";
+import { TouchControls } from "@/components/games/TouchControls";
+import { useIsMobileViewport } from "@/lib/use-is-mobile-viewport";
 
 export interface AsteroidsGameProps {
   onScoreChange: (score: number) => void;
@@ -26,6 +28,7 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
   ) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const engineRef = useRef<AsteroidsEngine | null>(null);
+    const isMobile = useIsMobileViewport();
 
     useImperativeHandle(ref, () => ({
       pause: () => engineRef.current?.pause(),
@@ -63,12 +66,22 @@ const AsteroidsGame = forwardRef<AsteroidsGameHandle, AsteroidsGameProps>(
     }, [skin]);
 
     return (
-      <canvas
-        ref={canvasRef}
-        width={800}
-        height={600}
-        style={{ width: "100%", height: "100%" }}
-      />
+      <>
+        <canvas
+          ref={canvasRef}
+          width={800}
+          height={600}
+          style={{ width: "100%", height: "100%", touchAction: "none" }}
+        />
+        {isMobile && (
+          <TouchControls
+            directions={{ left: "ArrowLeft", right: "ArrowRight", up: "ArrowUp" }}
+            actions={[{ code: "Space", label: "DISPARAR" }]}
+            onPress={(code) => engineRef.current?.pressVirtualKey(code)}
+            onRelease={(code) => engineRef.current?.releaseVirtualKey(code)}
+          />
+        )}
+      </>
     );
   },
 );

@@ -312,10 +312,8 @@ export class TetrisEngine {
     });
   }
 
-  private handleKeyDown = (e: KeyboardEvent) => {
-    if (PREVENTED_CODES.has(e.code)) e.preventDefault();
-    if (this.paused || this.state === "gameover") return;
-    switch (e.code) {
+  private runAction(code: string) {
+    switch (code) {
       case "ArrowLeft":
         if (!this.collide(this.current.shape, this.current.x - 1, this.current.y)) this.current.x--;
         break;
@@ -333,6 +331,17 @@ export class TetrisEngine {
         this.hardDrop();
         break;
     }
+  }
+
+  /** Ejecuta la misma acción discreta del switch de teclado. Sin release: Caída no tiene keyup. */
+  pressVirtualKey(code: string) {
+    if (this.paused || this.state === "gameover") return;
+    this.runAction(code);
+  }
+
+  private handleKeyDown = (e: KeyboardEvent) => {
+    if (PREVENTED_CODES.has(e.code)) e.preventDefault();
+    this.pressVirtualKey(e.code);
   };
 
   private initGame() {

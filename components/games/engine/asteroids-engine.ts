@@ -398,15 +398,25 @@ export class AsteroidsEngine {
     });
   }
 
+  /** Equivalente a keydown: marca la tecla como sostenida y dispara "justPressed" si corresponde. */
+  pressVirtualKey(code: string) {
+    if (!this.keys[code]) this.justPressed[code] = true;
+    this.keys[code] = true;
+  }
+
+  /** Equivalente a keyup: libera la tecla sostenida. */
+  releaseVirtualKey(code: string) {
+    this.keys[code] = false;
+  }
+
   private handleKeyDown = (e: KeyboardEvent) => {
     if (PREVENTED_CODES.has(e.code)) e.preventDefault();
-    if (!this.keys[e.code]) this.justPressed[e.code] = true;
-    this.keys[e.code] = true;
+    this.pressVirtualKey(e.code);
   };
 
   private handleKeyUp = (e: KeyboardEvent) => {
     if (PREVENTED_CODES.has(e.code)) e.preventDefault();
-    this.keys[e.code] = false;
+    this.releaseVirtualKey(e.code);
   };
 
   private pressed(code: string) {
