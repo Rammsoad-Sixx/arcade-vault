@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Usa siempre `/front-design` para diseñar la interfaz de usuario.
 - El proyecto sigue Spec Driven Design vía `/spec` y `/spec-impl` (fernando-skills, instalado con `npx skills@latest add Klerith/fernando-skills`). Toda feature nueva empieza como un `.md` en `specs/` en estado `Draft` antes de implementarse.
 - `/port-game` — variante especializada de `/spec` para portar un juego jugable real al catálogo con leaderboard en Supabase. Ya conoce el patrón validado en `specs/04-juego-asteroides.md` y `specs/05-leaderboard-y-tabla-juegos.md`, así que pregunta menos que `/spec` genérico. Fuente de juegos de referencia: `references/started-games/`. Definido en `.agents/skills/port-game/` (symlinkeado en `.claude/skills/port-game`).
+- `/spec-impl-game` — variante de `/spec-impl` para specs de juego (típicamente producidos por `/port-game` o `game-jam`): sigue exactamente las mismas 4 fases de `/spec-impl` (misma fuente, sin reimplementarlas) y, al terminar la implementación, dispara automáticamente `skin-designer` y luego `mobile-porter` sobre el juego portado — en secuencia, nunca en paralelo. Si el spec no agrega/completa una entrada de `GAMES`, se comporta igual que `/spec-impl` puro sin esa fase extra. Definido en `.agents/skills/spec-impl-game/` (symlinkeado en `.claude/skills/spec-impl-game`).
 - `specs/.spec-config.yml` controla si `/spec-impl` crea la rama de git automáticamente (`AutoCreateBranch: true` por defecto).
 
 ## Subagentes

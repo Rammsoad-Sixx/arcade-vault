@@ -11,11 +11,11 @@ Se reescribe entera en cada corrida. Versión curada para consulta rápida en
 | `asteroides` | Sí | Sí | Sí | Sí | Completo | #1 (2026-08-04) |
 | `bloque-buster` | Sí | Sí | Sí | Sí | Completo | #2 (2026-08-04) |
 | `caida` | Sí | Sí | Sí | Sí | Completo | #3 (2026-08-04) |
+| `ranaria` | Sí | Sí | Sí | Sí | Completo | #4 (2026-08-07) |
 | `serpentina` | No | — | — | — | Bloqueado: sin motor real | — |
 | `gloton` | No | — | — | — | Bloqueado: sin motor real | — |
 | `invasores` | No | — | — | — | Bloqueado: sin motor real | — |
 | `rocas` | No | — | — | — | Bloqueado: sin motor real | — |
-| `ranaria` | No | — | — | — | Bloqueado: sin motor real | — |
 | `duelo-pixel` | No | — | — | — | Bloqueado: sin motor real | — |
 
 ## Historial de corridas
@@ -284,3 +284,124 @@ Se reescribe entera en cada corrida. Versión curada para consulta rápida en
   - `lib/skins.ts`: leído, no modificado (los roles existentes alcanzaron).
 - **Resultado del lint:** `npm run lint` pasó limpio a la primera. También se
   verificó `npx tsc --noEmit` sin errores.
+
+### #4 — 2026-08-07 — `ranaria`
+
+- **Juego objetivo:** `ranaria` (RANARIA / Frogger). Determinado
+  directamente por la invocación explícita ("Usá skin-designer para el juego
+  `ranaria` ... motor recién portado — Frogger") — no hizo falta preguntar.
+  La memoria previa (corridas #1-#3) todavía listaba `ranaria` como
+  "Bloqueado: sin motor real"; se confirmó contra el estado real del árbol
+  de trabajo que ya existían `components/games/engine/frogger-engine.ts` y
+  `components/games/FroggerGame.tsx` (archivos sin trackear en git, recién
+  portados, no reflejados aún en `CLAUDE.md`/`implemented-games.md`), y que
+  `app/juegos/[id]/jugar/page.tsx` ya tenía `isFrogger` incluido en
+  `hasRealEngine` (por lo que el selector de skin ya era visible para este
+  juego) pero `<FroggerGame>` no recibía el prop `skin` y `FroggerEngine` no
+  leía ninguna paleta — confirmando que el motor real sí existe hoy, aunque
+  la documentación del proyecto (fuera del alcance permitido de este
+  subagente) todavía no lo refleja.
+- **Estado previo:** Sin implementar (motor recién portado, sin skins).
+  `lib/skins.ts` y el selector de skin en `app/juegos/[id]/jugar/page.tsx`
+  ya existían íntegros de las corridas #1-#3 (los 3 roles genéricos ya
+  definidos alcanzaron, sin necesidad de agregar un rol nuevo), pero
+  `FroggerEngine` dibujaba con más de 20 colores hex fijos: 4 zonas de
+  terreno (`#0a3d1a` seguro, `#0a2e40` río, `#111111` carretera, `#8fe37a`
+  bocas de meta), coches con 3 colores rotando (`#ff3b3b`/`#ffd23b`/
+  `#3ba7ff`), camión gris (`#8a8a8a`/`#555555`), troncos marrones
+  (`#7a4a25`/`#5c3416`), tortugas verdes (`#2fbf5a`/`#0e6b2c`,
+  `rgba(60,180,100,0.35)` sumergidas), rana verde (`#39ff6a`), y bocas de
+  meta con borde dorado (`#d4af37`) y frog-icon de meta completada
+  (`#39ff6a`).
+- **Decisión de diseño clave — mapeo semántico:** a diferencia de
+  `asteroides`/`bloque-buster`/`caida` (entidades sobre un fondo neutro
+  único), Frogger tiene 4 zonas de terreno con significado funcional
+  (segura/río/carretera/meta) que el jugador necesita distinguir de un
+  vistazo. Aplanar todo a un solo `palette.background` habría degradado la
+  legibilidad del tablero. Se resolvió así, sin introducir ningún rol nuevo
+  en `SkinPalette`:
+  - **Rana (jugador)** y **frog-icon en boca de meta ya completada** → rol
+    `primary` — ambas representan "la rana", la completada es la misma
+    entidad ya a salvo.
+  - **Vehículos de carretera** (coches, camiones — hostiles, matan al
+    contacto) → rol `secondary`, mismo criterio que asteroides/bloque-buster
+    usan `secondary` para amenazas/proyectiles.
+  - **Flotadores del río** (troncos, tortugas — sostienen a la rana) y
+    **borde de las bocas de meta** → rol `accent`, como "resalte puntual/
+    elemento de soporte", análogo al power-up de asteroides.
+  - **Zonas de terreno** (franjas seguras, río, carretera, franja de metas):
+    en vez de un color fijo por zona, se pintan como un lavado sutil
+    (`globalAlpha` 0.08–0.26 según `glow`) del rol semánticamente asociado
+    sobre `palette.background` — zona segura y franja de metas usan
+    `primary` (territorio/hogar de la rana), río usa `accent` (mismo rol que
+    sus flotadores), carretera usa `secondary` (mismo rol que sus
+    vehículos). Esto preserva la lectura de zonas sin inventar colores
+    ajenos a la paleta activa; en `clasico` (monocromático) las zonas quedan
+    diferenciadas solo por intensidad de alpha, consistente con la filosofía
+    "1-2 colores, sin distinción de gradiente compleja" del skin.
+  - **Interior de cada boca de meta** (el "hueco" donde encaja la rana) →
+    rol `background` (mismo criterio que otros engines usan `background`
+    como color de "hueco"/backdrop).
+  - **Detalles puramente estructurales/neutros** (ruedas negras de
+    vehículos, vetas de madera de troncos, caparazón de tortugas, ojos
+    blanco/negro de la rana) se mantuvieron fijos (`rgba(0,0,0,0.35..0.55)`,
+    `#ffffff`, `#111111`) en los 3 skins — mismo criterio ya sentado por el
+    bisel blanco de `tetris-engine.ts` en la corrida #3: son detalles de
+    relieve/biología, no colores de identidad. Se eliminó la variedad
+    decorativa de 3 colores rotando por coche (`#ff3b3b`/`#ffd23b`/
+    `#3ba7ff`), igual criterio que bloque-buster abandonó el color
+    arbitrario por tipo de bloque en la corrida #2.
+- **Qué se implementó:**
+  - `lib/skins.ts`: sin cambios — los 3 roles genéricos ya definidos
+    alcanzaron para todo el mapeo de Frogger. No hizo falta agregar un rol
+    nuevo.
+  - `components/games/engine/frogger-engine.ts`:
+    - Constructor con tercer parámetro opcional `initialSkin: SkinId =
+      DEFAULT_SKIN` (Frogger ya recibía 2 parámetros obligatorios: `canvas`,
+      `callbacks`) y campo privado `palette: SkinPalette`.
+    - Método público `setSkin(skin: SkinId)` que reemplaza `this.palette` en
+      caliente sin tocar el resto del estado (score, vidas, nivel, tiempo,
+      carriles, posición de la rana, metas ya completadas).
+    - `draw()` reescrito: `ctx.shadowBlur = 0` al inicio; fondo base con
+      `fillRect` + `palette.background` (reemplaza `clearRect`, que dejaba
+      ver el fondo `#000` fijo de `.crt-screen`); 4 lavados de zona por
+      `globalAlpha` + rol semántico (ver arriba); bocas de meta con interior
+      `palette.background`, borde `palette.accent` (con glow opcional) y
+      frog-icon de meta completada en `palette.primary`.
+    - `drawEntity()` (antes sin parámetro de paleta explícito, ahora lee
+      `this.palette` directo) reescrito para coches/camiones → `secondary`
+      con ruedas neutras fijas; troncos/tortugas → `accent` con vetas/
+      caparazón neutros fijos; tortuga sumergida → `accent` con
+      `globalAlpha` reducido (mismo criterio que el círculo translúcido
+      original).
+    - `drawFrog()` reescrito: cuerpo y patas → `palette.primary` con glow
+      opcional; ojos blanco/negro se mantienen fijos (detalle biológico).
+  - `components/games/FroggerGame.tsx`: prop opcional `skin?: SkinId`
+    (default `DEFAULT_SKIN`), pasado como 3er argumento (`initialSkin`) al
+    construir `FroggerEngine` en el efecto de montaje (deps `[]`, sin tocar
+    ese efecto más de lo necesario), y un segundo `useEffect` separado con
+    deps `[skin]` que llama `engineRef.current?.setSkin(skin)` — mismo
+    patrón exacto que los otros 3 wrappers.
+  - `app/juegos/[id]/jugar/page.tsx`: el selector de skin y el estado global
+    (`useSyncExternalStore` sobre `localStorage["av_skin"]`) ya existían
+    íntegros de las corridas #1-#3, y `isFrogger`/`hasRealEngine` ya
+    mostraba el selector para este juego — no se recrearon. Único cambio: se
+    agregó `skin={skin}` a la instancia de `<FroggerGame>` (antes no recibía
+    el prop).
+- **Archivos tocados:**
+  - `components/games/engine/frogger-engine.ts` (import de `lib/skins`,
+    constructor + `setSkin` + `draw`/`drawEntity`/`drawFrog` reescritos por
+    rol de paleta)
+  - `components/games/FroggerGame.tsx` (prop `skin` + segundo efecto)
+  - `app/juegos/[id]/jugar/page.tsx` (una línea: `skin={skin}` en
+    `<FroggerGame>`)
+  - `lib/skins.ts`: leído, no modificado (los roles existentes alcanzaron).
+- **Resultado del lint:** `npm run lint` pasó limpio a la primera. También se
+  verificó `npx tsc --noEmit` sin errores.
+- **Nota de contexto:** `CLAUDE.md`/`AGENTS.md`/`implemented-games/
+  implemented-games.md` todavía describen el catálogo como "solo 3 juegos
+  con motor real" y listan `ranaria` entre los placeholders — quedaron
+  desactualizados por el port reciente de Frogger. Actualizarlos está fuera
+  del alcance permitido de `skin-designer` (esos archivos no están en la
+  lista de archivos que puede tocar); se señala aquí para que se actualicen
+  en otra corrida/PR.

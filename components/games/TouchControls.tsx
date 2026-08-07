@@ -15,6 +15,10 @@ export interface TouchControlsProps {
   actions: TouchActionButton[];
   onPress: (code: string) => void;
   onRelease: (code: string) => void;
+  // Direcciones sostenidas que auto-repiten mientras el botón sigue presionado.
+  // Opcional — si se omite, usa el mismo default de siempre (["left","right","down"]).
+  // Pasar [] desactiva el auto-repeat por completo (ej. Ranaria: un toque = un salto).
+  repeatDirections?: DPadDirection[];
 }
 
 const DPAD_ORDER: DPadDirection[] = ["up", "down", "left", "right"];
@@ -25,18 +29,26 @@ const DPAD_LABELS: Record<DPadDirection, string> = {
   right: "▶",
 };
 
-// Direcciones sostenidas que necesitan auto-repeat propio por intervalo (el touch
-// no tiene el repeat nativo del teclado del SO). "up" queda afuera a propósito:
-// en Caída dispara rotación (una sola vez por toque); en Asteroides acelerar ya se
-// mantiene solo mientras la tecla virtual sigue "presionada" (no necesita repeat).
-const REPEAT_DIRECTIONS = new Set<DPadDirection>(["left", "right", "down"]);
+// Default de direcciones sostenidas que necesitan auto-repeat propio por intervalo
+// (el touch no tiene el repeat nativo del teclado del SO). "up" queda afuera a
+// propósito: en Caída dispara rotación (una sola vez por toque); en Asteroides
+// acelerar ya se mantiene solo mientras la tecla virtual sigue "presionada" (no
+// necesita repeat). Cada juego puede sobreescribir esto vía `repeatDirections`.
+const DEFAULT_REPEAT_DIRECTIONS: DPadDirection[] = ["left", "right", "down"];
 const REPEAT_DELAY_MS = 220;
 const REPEAT_INTERVAL_MS = 90;
 
 type Timer = { timeout?: ReturnType<typeof setTimeout>; interval?: ReturnType<typeof setInterval> };
 
-export function TouchControls({ directions, actions, onPress, onRelease }: TouchControlsProps) {
+export function TouchControls({
+  directions,
+  actions,
+  onPress,
+  onRelease,
+  repeatDirections,
+}: TouchControlsProps) {
   const timersRef = useRef<Record<string, Timer>>({});
+  const repeatSet = new Set<DPadDirection>(repeatDirections ?? DEFAULT_REPEAT_DIRECTIONS);
 
   const clearTimers = useCallback((code: string) => {
     const t = timersRef.current[code];
@@ -91,7 +103,7 @@ export function TouchControls({ directions, actions, onPress, onRelease }: Touch
               type="button"
               className={`touch-dpad-btn touch-dpad-${dir}`}
               aria-label={dir}
-              onPointerDown={handlePress(code, REPEAT_DIRECTIONS.has(dir))}
+              onPointerDown={handlePress(code, repeatSet.has(dir))}
               onPointerUp={handleRelease(code)}
               onPointerLeave={handleRelease(code)}
               onPointerCancel={handleRelease(code)}
