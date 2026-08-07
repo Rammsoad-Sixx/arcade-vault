@@ -301,12 +301,15 @@ export class BloqueBusterEngine {
       if (block.alive) ctx.fillRect(block.x + 1, block.y + 1, block.w - 2, block.h - 2);
     }
 
-    // Explosiones: flash puntual, rol "accent"
+    // Explosiones: flash puntual, rol "accent". shadowBlur/shadowColor fijados
+    // una vez para todo el grupo (mismo valor en cada explosión) en vez de
+    // reasignados por iteración — ver SPEC 10 / criterio de batching aplicado
+    // por game-performance-booster.
+    ctx.shadowBlur = palette.glow ? 14 : 0;
     ctx.shadowColor = palette.accent;
     ctx.fillStyle = palette.accent;
     for (const exp of this.explosions) {
       ctx.globalAlpha = Math.max(0, 1 - exp.elapsed / EXPLOSION_DURATION);
-      ctx.shadowBlur = palette.glow ? 14 : 0;
       ctx.fillRect(exp.x, exp.y, exp.w, exp.h);
     }
     ctx.globalAlpha = 1;

@@ -47,14 +47,12 @@ class Bullet {
     if (this.ttl <= 0) this.dead = true;
   }
 
+  /** shadowBlur/shadowColor los fija el caller una vez por grupo, antes del forEach — ver draw() del engine. */
   draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
-    ctx.shadowBlur = palette.glow ? 8 : 0;
-    ctx.shadowColor = palette.secondary;
     ctx.fillStyle = palette.secondary;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
     ctx.fill();
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -108,12 +106,11 @@ class Asteroid {
     ];
   }
 
+  /** shadowBlur/shadowColor los fija el caller una vez por grupo, antes del forEach — ver draw() del engine. */
   draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(this.rot);
-    ctx.shadowBlur = palette.glow ? 10 : 0;
-    ctx.shadowColor = palette.secondary;
     ctx.strokeStyle = palette.secondary;
     ctx.lineWidth = 1.5;
     ctx.lineJoin = "round";
@@ -155,11 +152,10 @@ class PowerUp {
     if (this.ttl <= 0) this.dead = true;
   }
 
+  /** shadowBlur/shadowColor los fija el caller una vez por grupo, antes del forEach — ver draw() del engine. */
   draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     if (this.ttl < 2 && Math.floor(this.ttl * 8) % 2 === 0) return;
     const pulse = 0.85 + Math.sin(performance.now() / 150) * 0.15;
-    ctx.shadowBlur = palette.glow ? 12 : 0;
-    ctx.shadowColor = palette.accent;
     ctx.save();
     ctx.translate(this.x, this.y);
     ctx.rotate(Math.PI / 4);
@@ -173,7 +169,6 @@ class PowerUp {
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("3x", this.x, this.y);
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -315,11 +310,10 @@ class Particle {
     if (this.ttl <= 0) this.dead = true;
   }
 
+  /** shadowBlur/shadowColor los fija el caller una vez por grupo, antes del forEach — ver draw() del engine. */
   draw(ctx: CanvasRenderingContext2D, palette: SkinPalette) {
     const alpha = this.ttl / this.life;
     ctx.globalAlpha = alpha;
-    ctx.shadowBlur = palette.glow ? 6 : 0;
-    ctx.shadowColor = palette.accent;
     ctx.strokeStyle = palette.accent;
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -327,7 +321,6 @@ class Particle {
     ctx.lineTo(this.x - this.vx * 0.05, this.y - this.vy * 0.05);
     ctx.stroke();
     ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
   }
 }
 
@@ -568,10 +561,33 @@ export class AsteroidsEngine {
     ctx.fillStyle = palette.background;
     ctx.fillRect(0, 0, W, H);
 
+    // shadowBlur/shadowColor fijado UNA vez por grupo homogéneo de entidades
+    // (todas comparten color/blur dentro del grupo) en vez de una vez por
+    // entidad individual dentro de cada draw() — mismo criterio de batching
+    // que frogger-engine.ts (ver SPEC 10). Reset explícito a 0 entre grupos
+    // para no filtrar sombra al siguiente grupo ni a la nave.
+    ctx.shadowBlur = palette.glow ? 6 : 0;
+    ctx.shadowColor = palette.accent;
     this.particles.forEach((p) => p.draw(ctx, palette));
+    ctx.shadowBlur = 0;
+
+    ctx.shadowBlur = palette.glow ? 10 : 0;
+    ctx.shadowColor = palette.secondary;
     this.asteroids.forEach((a) => a.draw(ctx, palette));
+    ctx.shadowBlur = 0;
+
+    ctx.shadowBlur = palette.glow ? 12 : 0;
+    ctx.shadowColor = palette.accent;
     this.powerUps.forEach((p) => p.draw(ctx, palette));
+    ctx.shadowBlur = 0;
+
+    ctx.shadowBlur = palette.glow ? 8 : 0;
+    ctx.shadowColor = palette.secondary;
     this.bullets.forEach((b) => b.draw(ctx, palette));
+    ctx.shadowBlur = 0;
+
+    // La nave es una sola instancia por frame: su draw() mantiene el toggle
+    // propio, no hay redundancia que agrupar (no es un grupo de N entidades).
     this.ship.draw(ctx, palette);
   }
 
