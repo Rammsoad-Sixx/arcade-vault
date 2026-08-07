@@ -8,6 +8,7 @@ import { DEFAULT_SKIN, SKINS, type SkinId } from "@/lib/skins";
 import AsteroidsGame, { type AsteroidsGameHandle } from "@/components/games/AsteroidsGame";
 import TetrisGame, { type TetrisGameHandle } from "@/components/games/TetrisGame";
 import BloqueBusterGame, { type BloqueBusterGameHandle } from "@/components/games/BloqueBusterGame";
+import FroggerGame, { type FroggerGameHandle } from "@/components/games/FroggerGame";
 import { saveScore } from "./actions";
 
 // Skin activa persistida en localStorage ("av_skin"), un solo valor global
@@ -46,6 +47,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(1);
   const [lines, setLines] = useState(0);
+  const [timeLeft, setTimeLeft] = useState(0);
   const [paused, setPaused] = useState(false);
   const [over, setOver] = useState(false);
   const [nameOverride, setNameOverride] = useState<string | null>(null);
@@ -56,11 +58,13 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   const asteroidsRef = useRef<AsteroidsGameHandle>(null);
   const tetrisRef = useRef<TetrisGameHandle>(null);
   const bloqueBusterRef = useRef<BloqueBusterGameHandle>(null);
+  const froggerRef = useRef<FroggerGameHandle>(null);
 
   const isAsteroids = id === "asteroides";
   const isTetris = id === "caida";
   const isBloqueBuster = id === "bloque-buster";
-  const hasRealEngine = isAsteroids || isTetris || isBloqueBuster;
+  const isFrogger = id === "ranaria";
+  const hasRealEngine = isAsteroids || isTetris || isBloqueBuster || isFrogger;
   const name = nameOverride ?? (user ? user.name : "INVITADO");
 
   const changeSkin = (next: SkinId) => {
@@ -69,7 +73,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
   };
 
   useEffect(() => {
-    if (over || paused || isAsteroids || isTetris || isBloqueBuster) return;
+    if (over || paused || isAsteroids || isTetris || isBloqueBuster || isFrogger) return;
     const t = setInterval(() => {
       setScore((s) => {
         const next = s + Math.floor(10 + Math.random() * 90);
@@ -78,7 +82,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       });
     }, 220);
     return () => clearInterval(t);
-  }, [over, paused, isAsteroids, isTetris, isBloqueBuster]);
+  }, [over, paused, isAsteroids, isTetris, isBloqueBuster, isFrogger]);
 
   if (!game) return null;
 
@@ -94,6 +98,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       tetrisRef.current?.forceGameOver();
     } else if (isBloqueBuster) {
       bloqueBusterRef.current?.forceGameOver();
+    } else if (isFrogger) {
+      froggerRef.current?.forceGameOver();
     } else {
       setOver(true);
     }
@@ -111,6 +117,9 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       } else if (isBloqueBuster) {
         if (next) bloqueBusterRef.current?.pause();
         else bloqueBusterRef.current?.resume();
+      } else if (isFrogger) {
+        if (next) froggerRef.current?.pause();
+        else froggerRef.current?.resume();
       }
       return next;
     });
@@ -121,6 +130,7 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
     setLives(3);
     setLevel(1);
     setLines(0);
+    setTimeLeft(0);
     setPaused(false);
     setOver(false);
     setSaved(false);
@@ -133,6 +143,8 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
       tetrisRef.current?.reset();
     } else if (isBloqueBuster) {
       bloqueBusterRef.current?.reset();
+    } else if (isFrogger) {
+      froggerRef.current?.reset();
     }
   };
 
@@ -174,6 +186,12 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
             <div className="hud-stat">
               <div className="l">Líneas</div>
               <div className="v">{lines}</div>
+            </div>
+          )}
+          {isFrogger && (
+            <div className="hud-stat">
+              <div className="l">Tiempo</div>
+              <div className="v">{timeLeft}s</div>
             </div>
           )}
         </div>
@@ -240,6 +258,16 @@ export default function GamePlayer({ params }: { params: Promise<{ id: string }>
               onScoreChange={setScore}
               onLivesChange={setLives}
               onLevelChange={setLevel}
+              onGameOver={handleGameOver}
+              skin={skin}
+            />
+          ) : isFrogger ? (
+            <FroggerGame
+              ref={froggerRef}
+              onScoreChange={setScore}
+              onLivesChange={setLives}
+              onLevelChange={setLevel}
+              onTimeChange={setTimeLeft}
               onGameOver={handleGameOver}
               skin={skin}
             />

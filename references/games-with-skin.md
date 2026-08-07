@@ -16,32 +16,39 @@ deuda — simplemente todavía no tienen motor.
 | `asteroides` | ASTEROIDES | Sí | Sí | Sí | Sí | Completo |
 | `bloque-buster` | BLOQUE BUSTER (Arkanoid) | Sí | Sí | Sí | Sí | Completo |
 | `caida` | CAÍDA (Tetris) | Sí | Sí | Sí | Sí | Completo |
+| `ranaria` | RANARIA (Frogger) | Sí | Sí | Sí | Sí | Completo |
 | `serpentina` | SERPENTINA | No | — | — | — | Bloqueado: sin motor real |
 | `gloton` | GLOTÓN | No | — | — | — | Bloqueado: sin motor real |
 | `invasores` | INVASORES | No | — | — | — | Bloqueado: sin motor real |
 | `rocas` | ROCAS | No | — | — | — | Bloqueado: sin motor real |
-| `ranaria` | RANARIA | No | — | — | — | Bloqueado: sin motor real |
 | `duelo-pixel` | DUELO PIXEL | No | — | — | — | Bloqueado: sin motor real |
 
-**Resumen:** los 3 juegos elegibles (motor real) tienen hoy las 3 skins
-completas (`asteroides`, `bloque-buster`, `caida`). 6 juegos siguen
-bloqueados por ser placeholder sin motor real — no cuentan como
+**Resumen:** los 4 juegos elegibles (motor real) tienen hoy las 3 skins
+completas (`asteroides`, `bloque-buster`, `caida`, `ranaria`). 5 juegos
+siguen bloqueados por ser placeholder sin motor real — no cuentan como
 incumplimiento, son candidatos naturales a `/port-game` primero. Cuando
 `/port-game` sume un motor nuevo, ese juego pasa a "Sin implementar" en la
 próxima corrida de `skin-designer`.
 
-Última actualización: 2026-08-04 — corrida #3 de `skin-designer`, implementó
-`caida` (`clasico`/`retro`/`neon` completos). El motor de Tetris tenía un
-color hex fijo por cada uno de sus 8 tipos de pieza (I/O/T/S/Z/J/L + una
-pieza no estándar "N"); se eliminó ese color por tipo y se remapeó por rol
-de paleta según el estado del bloque: pieza activa + preview de la próxima
-pieza → `primary` (entidad bajo control del jugador), piezas ya asentadas en
-el tablero + líneas de la grilla de fondo → `secondary`, ghost/previsualización
-de aterrizaje → `accent` (el motor no tenía ningún efecto de "línea
-completa"/flash existente que mapear ahí, así que se usó el resalte puntual
-más cercano en espíritu — el ghost piece — en vez de inventar una animación
-nueva), fondo del canvas (tablero y next-canvas) → `background`. El selector
-de skin en `app/juegos/[id]/jugar/page.tsx` ya era infraestructura compartida
-visible para este juego desde la corrida #1; solo faltaba pasarle el prop
-`skin` al wrapper. Los 3 juegos elegibles del catálogo (`asteroides`,
-`bloque-buster`, `caida`) tienen ahora sus 3 skins completas.
+Última actualización: 2026-08-07 — corrida #4 de `skin-designer`, implementó
+`ranaria` (Frogger; `clasico`/`retro`/`neon` completos). El motor tenía más
+de 20 colores hex fijos entre 4 zonas de terreno (segura/río/carretera/
+metas), vehículos, flotadores del río y la rana. Se remapeó por rol
+semántico: rana (jugador) y frog-icon de meta completada → `primary`;
+vehículos de carretera (hostiles) → `secondary`; flotadores del río
+(troncos/tortugas, soporte) y borde de las bocas de meta → `accent`; las 4
+zonas de terreno se pintan como un lavado sutil (alpha bajo) del rol
+asociado sobre `palette.background`, en vez de un color fijo por zona, para
+conservar la lectura del tablero sin introducir colores ajenos a la paleta.
+Detalles puramente estructurales (ruedas, vetas de madera, ojos de la rana)
+se mantuvieron neutros en los 3 skins, mismo criterio que el bisel blanco de
+`tetris-engine.ts`. El selector de skin en `app/juegos/[id]/jugar/page.tsx`
+ya era infraestructura compartida visible para este juego (vía `isFrogger`
+en `hasRealEngine`) desde antes de esta corrida; solo faltaba pasarle el
+prop `skin` al wrapper `FroggerGame`. Los 4 juegos con motor real del
+catálogo tienen ahora sus 3 skins completas.
+
+Nota: `CLAUDE.md`/`AGENTS.md`/`implemented-games/implemented-games.md`
+todavía describen el catálogo como "solo 3 juegos con motor real" (no
+reflejan el port reciente de Frogger a `ranaria`) — fuera del alcance de
+`skin-designer` actualizarlos.
